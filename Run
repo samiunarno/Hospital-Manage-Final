@@ -1,0 +1,3 @@
+#!/bin/bash
+echo "Compiling and starting the application..."
+make
