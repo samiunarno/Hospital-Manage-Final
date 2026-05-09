@@ -101,15 +101,13 @@ typedef struct QueueNode {
     struct QueueNode* next;
 } QueueNode;
 
-// 全局链表头
-Patient* patientHead = NULL;
-Doctor* doctorHead = NULL;
-Medicine* medicineHead = NULL;
-Bed* bedHead = NULL;
-Prescription* prescriptionHead = NULL;
+// 全局链表头 (static 避免与其他模块冲突)
+static Patient* patientHead = NULL;
+static Doctor* doctorHead = NULL;
+static Bed* bedHead = NULL;
 
-Registration* regHead = NULL;
-QueueNode* queueHead = NULL;
+static Registration* regHead = NULL;
+static QueueNode* queueHead = NULL;
 
 // ===================== 科室&医生查询 =====================
 void queryAllDepartment() {

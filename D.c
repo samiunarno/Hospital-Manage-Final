@@ -854,7 +854,7 @@ void handleReleaseBed(Department* hospital) {
 }
 
 // Main function
-int main(void) {
+int D_entry(void) {
     Department* hospital = initializeHospital();
     int choice;
     

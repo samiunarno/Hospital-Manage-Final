@@ -55,8 +55,8 @@ typedef struct Prescription {
 } Prescription;
 
 /* 全局处方链表 */
-Prescription* presHead = NULL;
-int curPresId = 4001;
+static Prescription* presHead = NULL;
+static int curPresId = 4001;
 
 
 /* ===== 来自 prescription.h 的函数声明 ===== */
