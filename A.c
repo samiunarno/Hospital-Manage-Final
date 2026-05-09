@@ -2,8 +2,6 @@
 #include "utils.h"
 #include <locale.h>
 
-
-/* ===== 为了让 A 模块单独成文件可运行，补充最小医生/药品/床位辅助实现 ===== */
 static Doctor *doctor_create(int doctorId, const char *name, const char *department, const char *title) {
     Doctor *d = (Doctor *)malloc(sizeof(Doctor));
     if (!d) return NULL;
@@ -121,10 +119,10 @@ static void bed_free_all(Bed *head) {
     }
 }
 
-/* 前向声明，避免单文件内前后顺序导致的编译问题 */
+
 void patient_display_one(const Patient *patient);
 
-/************************ A：patient.c ************************/
+
 
 Patient *patient_create(int patientId, const char *name, int age, const char *gender, const char *department) {
     Patient *p = (Patient *)malloc(sizeof(Patient));

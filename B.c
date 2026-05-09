@@ -11,10 +11,10 @@ void addIntoQueue(int registerId, int patientId, int doctorId);
 
 // 病历记录结构体
 typedef struct VisitRecord {
-    int recordId;                  // 病历ID
-    char diagnosis[MAX_DIAG_LEN];  // 诊断结果
-    double cost;                   // 单次就诊费用
-    struct VisitRecord* next;      // 链表下一个节点
+    int recordId;                  
+    char diagnosis[MAX_DIAG_LEN];  
+    double cost;                   
+    struct VisitRecord* next;      
 } VisitRecord;
 
 // 处方药品项结构体

@@ -2,22 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-/*
- * C_part_combined.c
- * 合并来源：
- * 1. prescription.h
- * 2. prescription.c
- * 3. pharmacy(1).h
- * 4. pharmacy(1).c
- *
- * 说明：
- * - 尽量保留了原有函数名、变量名、整体写法和逻辑。
- * - 为避免重复定义，Medicine 结构体只保留一份。
- * - prescription.c 里原本的 static medicine_select 与 pharmacy(1).c 中
- *   的 medicine_select 功能重复，这里统一保留一个版本供两边共用。
- * - pharmacy(1).c 里的 main 保留为条件编译形式，避免后续并入总工程时
- *   和项目主入口冲突；若要单独演示本文件，可定义 C_MODULE_STANDALONE。
- */
+
 
 typedef struct Registration {
     int registerId;
