@@ -1,33 +1,51 @@
-# Compiler and flags
-CC = gcc
-CFLAGS = -Wall -Wextra -O2
+# Hospital Management System - Makefile
+# ==========================================
 
-# Target executable name
+CC      = gcc
+CFLAGS  = -Wall -Wextra -O2 -Iinclude
+LDFLAGS =
+
+SRC_DIR  = src
+INC_DIR  = include
+OBJ_DIR  = build
+DATA_DIR = data
+
 TARGET = hospital
 
-# Source files
-SRCS = main.c A.c B.c C.c D.c utils.c
+SRCS = $(wildcard $(SRC_DIR)/*.c)
+OBJS = $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(SRCS))
 
-# Object files (auto-generated from SRCS)
-OBJS = $(SRCS:.c=.o)
+# Default: compile only, do NOT auto-run
+all: directories $(TARGET)
+	@echo ""
+	@echo "  ╔═══════════════════════════════════╗"
+	@echo "  ║  BUILD SUCCESSFUL                 ║"
+	@echo "  ║  Run: ./hospital                  ║"
+	@echo "  ╚═══════════════════════════════════╝"
+	@echo ""
 
-# Default target: compile and run automatically
-all: run
+directories:
+	@mkdir -p $(OBJ_DIR)
+	@mkdir -p $(DATA_DIR)
 
-# Compile and link the target
 $(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-# Compile source files into object files
-%.o: %.c
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Run target: builds if necessary, then runs the executable
-run: $(TARGET)
+# Separate run target
+run: all
 	./$(TARGET)
 
-# Clean target: removes generated files
+# Clean everything
 clean:
-	rm -f $(OBJS) $(TARGET)
+	@rm -rf $(OBJ_DIR) $(TARGET)
+	@echo "Cleaned build artifacts."
 
-.PHONY: all run clean
+# Clean including data files
+cleanall: clean
+	@rm -f $(DATA_DIR)/users.txt $(DATA_DIR)/*.txt $(DATA_DIR)/*.json $(DATA_DIR)/*.csv
+	@echo "Cleaned build artifacts and data files."
+
+.PHONY: all run clean cleanall directories

@@ -34,6 +34,7 @@
 
 typedef struct VisitRecord {
     int recordId;
+    int recordType; // 1: Registration, 2: Consultation, 3: Examination, 4: Inpatient care
     char diagnosis[DIAGNOSIS_LEN];
     float cost;
     struct VisitRecord *next;
@@ -65,6 +66,9 @@ typedef struct Doctor {
 typedef struct Medicine {
     int medicineId;
     char name[MED_NAME_LEN];
+    char brandName[MED_NAME_LEN];
+    char genericName[MED_NAME_LEN];
+    char alias[MED_NAME_LEN];
     float price;
     int stock;
     int warningLine;
@@ -115,5 +119,25 @@ typedef struct QueueNode {
     int status;
     struct QueueNode *next;
 } QueueNode;
+
+// --- Global Shared Data Pointers ---
+extern Patient *g_patientHead;
+extern Doctor *g_doctorHead;
+extern Medicine *g_medicineHead;
+extern Bed *g_bedHead;
+extern Registration *g_regHead;
+extern QueueNode *g_queueHead;
+extern Prescription *g_presHead;
+
+// Global ID counters
+extern int g_nextPatientId;
+extern int g_nextDoctorId;
+extern int g_nextMedicineId;
+extern int g_nextPrescriptionId;
+extern int g_nextBedId;
+extern int g_nextRecordId;
+extern int g_nextRegisterId;
+extern int g_nextQueueId;
+extern int g_nextRegisterTime;
 
 #endif

@@ -4,47 +4,13 @@
 
 
 
-typedef struct Registration {
-    int registerId;
-    int patientId;
-    int doctorId;
-    int status;
-    struct Registration* next;
-} Registration;
+#include "../include/common.h"
 
-Registration* c_regHead = NULL;
-
-typedef struct Medicine {
-    char* name;
-    int price;
-    int stock;
-    int warningLine;
-    struct Medicine* next;
-} Medicine;
-
-/* 处方明细 */
-typedef struct PrescriptionItem {
-    char medicineName[50];
-    int quantity;
-    int itemCost;
-    struct PrescriptionItem* next;
-} PrescriptionItem;
-
-/* 处方主体 */
-typedef struct Prescription {
-    int prescriptionId;
-    int patientId;
-    int totalCost;
-    PrescriptionItem* items;
-    struct Prescription* next;
-} Prescription;
-
-/* 全局处方链表 */
-static Prescription* presHead = NULL;
-static int curPresId = 4001;
+// Note: Removed local struct definitions (Registration, Medicine, PrescriptionItem, Prescription)
+// since they are unified in common.h
 
 
-/* ===== 来自 prescription.h 的函数声明 ===== */
+/* ===== prescription.h function declarations ===== */
 int prescription_check_visit_status(int patientId);
 int prescription_create_for_called_patient(int patientId);
 int prescription_add_item_by_name(Medicine* medHead, int presId, char* medName, int num);
@@ -53,9 +19,9 @@ void prescription_display_all(void);
 void prescription_display_by_patient(int patientId);
 void prescription_free_all(void);
 
-/* ===== 来自 pharmacy(1).h 的函数声明 ===== */
+/* ===== pharmacy function declarations ===== */
 void clearInputBuffer(void);
-Medicine* medicine_in(Medicine** head, char* name, int price, int stock, int warningLine);
+Medicine* medicine_in(Medicine** head, char* name, char* brandName, char* genericName, char* alias, int price, int stock, int warningLine);
 Medicine* medicine_select(Medicine* head, char* name);
 void medicine_delete(Medicine** head, char* name);
 void medicine_menu(Medicine** head);
@@ -66,19 +32,19 @@ void loadFromFile(Medicine **head);
 
 /* ====================== prescription.c ====================== */
 
-/* 修正：校验患者是否处于"就诊中"状态（status=2） */
+/* Validate patient is in consultation (status=2) */
 int prescription_check_visit_status(int patientId)
 {
-    /* 1. 基础ID合法性校验 */
+    /* 1. Basic ID validation */
     if(patientId < 1001)
     {
         printf("--------------------------------------------------\n");
-        printf("患者编号非法，禁止开处方！\n");
+        printf("Invalid Patient ID, prescription denied!\n");
         return 0;
     }
 
-    /* 2. 遍历挂号链表，校验患者是否处于就诊中（status=2） */
-    Registration* reg = c_regHead;
+    /* 2. Search registration list for consultation status */
+    Registration* reg = g_regHead;
     int isVisiting = 0;
     while(reg != NULL)
     {
@@ -90,20 +56,20 @@ int prescription_check_visit_status(int patientId)
         reg = reg->next;
     }
 
-    /* 3. 状态判断 */
+    /* 3. Status check */
     if(!isVisiting)
     {
         printf("--------------------------------------------------\n");
-        printf("患者未挂号/未处于就诊中状态，禁止开处方！\n");
+        printf("Patient not in consultation, prescription denied!\n");
         return 0;
     }
 
     printf("--------------------------------------------------\n");
-    printf("患者就诊状态校验通过，允许开处方\n");
+    printf("Patient consultation verified, prescription allowed\n");
     return 1;
 }
 
-/* 以下函数保持原有逻辑不变 */
+/* Functions below retain original logic */
 int prescription_create_for_called_patient(int patientId)
 {
     if(!prescription_check_visit_status(patientId))
@@ -112,25 +78,25 @@ int prescription_create_for_called_patient(int patientId)
     Prescription* newPres = (Prescription*)malloc(sizeof(Prescription));
     if(!newPres)
     {
-        printf("内存分配失败！\n");
+        printf("Memory allocation failed!\n");
         return 0;
     }
-    newPres->prescriptionId = curPresId++;
+    newPres->prescriptionId = g_nextPrescriptionId++;
     newPres->patientId = patientId;
     newPres->totalCost = 0;
     newPres->items = NULL;
     newPres->next = NULL;
 
-    /* 尾插 */
-    if(presHead == NULL)
-        presHead = newPres;
+    /* Append to list */
+    if(g_presHead == NULL)
+        g_presHead = newPres;
     else
     {
-        Prescription* p = presHead;
+        Prescription* p = g_presHead;
         while(p->next) p = p->next;
         p->next = newPres;
     }
-    printf("操作成功！处方创建成功，处方编号：%d\n", newPres->prescriptionId);
+    printf("Success! Prescription ID: %d\n", newPres->prescriptionId);
     return 1;
 }
 
@@ -138,36 +104,36 @@ int prescription_add_item_by_name(Medicine* medHead, int presId, char* medName, 
 {
     if(num <= 0)
     {
-        printf("输入有误，请重新输入！药品数量不能小于等于0\n");
+        printf("Invalid input! Quantity must be > 0\n");
         return 0;
     }
 
-    /* 找处方 */
-    Prescription* p = presHead;
+    /* Find prescription */
+    Prescription* p = g_presHead;
     while(p && p->prescriptionId != presId)
         p = p->next;
     if(!p)
     {
-        printf("未找到对应处方！\n");
+        printf("Prescription not found!\n");
         return 0;
     }
 
-    /* 找药品（复用你药房查找） */
+    /* Find medicine */
     Medicine* med = medicine_select(medHead, medName);
     if(!med) return 0;
 
-    /* 库存判断（对齐你出库逻辑） */
+    /* Stock check */
     if(med->stock < num)
     {
-        printf("库存不足！\n");
+        printf("Insufficient stock！\n");
         return 0;
     }
 
-    /* 新建明细 */
+    /* Create item */
     PrescriptionItem* item = (PrescriptionItem*)malloc(sizeof(PrescriptionItem));
     if(!item)
     {
-        printf("内存分配失败！\n");
+        printf("Memory allocation failed!\n");
         return 0;
     }
     strcpy(item->medicineName, medName);
@@ -175,7 +141,7 @@ int prescription_add_item_by_name(Medicine* medHead, int presId, char* medName, 
     item->itemCost = med->price * num;
     item->next = NULL;
 
-    /* 明细尾插 */
+    /* Append item to list */
     if(!p->items)
         p->items = item;
     else
@@ -185,42 +151,42 @@ int prescription_add_item_by_name(Medicine* medHead, int presId, char* medName, 
         q->next = item;
     }
 
-    /* 累加总费用 */
+    /* Add to total cost */
     p->totalCost += item->itemCost;
-    /* 扣库存 和你药房出库逻辑完全一致 */
+    /* Deduct stock */
     med->stock -= num;
 
-    printf("操作成功！药品已加入处方并扣减库存\n");
+    printf("Success! Medicine added and stock deducted.\n");
     return 1;
 }
 
 void prescription_display_one(int presId)
 {
-    Prescription* p = presHead;
+    Prescription* p = g_presHead;
     while(p && p->prescriptionId != presId)
         p = p->next;
     if(!p)
     {
-        printf("未找到对应信息！\n");
+        printf("No matching record found!\n");
         return;
     }
 
-    printf("---------------- 处方信息 ----------------\n");
-    printf("处方编号：%d\n", p->prescriptionId);
-    printf("患者编号：%d\n", p->patientId);
-    printf("处方总费用：%d 元\n", p->totalCost);
+    printf("---------------- Prescription Info ----------------\n");
+    printf("Prescription ID: %d\n", p->prescriptionId);
+    printf("Patient ID: %d\n", p->patientId);
+    printf("Total Cost: %.2f\n", p->totalCost);
     printf("----------------------------------------\n");
-    printf("药品名称\t数量\t单品费用\n");
+    printf("Medicine Name\tQty\tItem Cost\n");
 
     PrescriptionItem* item = p->items;
     if(!item)
     {
-        printf("暂无药品明细\n");
+        printf("No medicine items\n");
         return;
     }
     while(item)
     {
-        printf("%s\t%d\t%d\n",
+        printf("%s\t%d\t%.2f\n",
                item->medicineName,
                item->quantity,
                item->itemCost);
@@ -231,12 +197,12 @@ void prescription_display_one(int presId)
 
 void prescription_display_all(void)
 {
-    if(!presHead)
+    if(!g_presHead)
     {
-        printf("暂无处方记录！\n");
+        printf("No prescriptions found!\n");
         return;
     }
-    Prescription* p = presHead;
+    Prescription* p = g_presHead;
     while(p)
     {
         prescription_display_one(p->prescriptionId);
@@ -247,7 +213,7 @@ void prescription_display_all(void)
 void prescription_display_by_patient(int patientId)
 {
     int flag = 0;
-    Prescription* p = presHead;
+    Prescription* p = g_presHead;
     while(p)
     {
         if(p->patientId == patientId)
@@ -258,12 +224,12 @@ void prescription_display_by_patient(int patientId)
         p = p->next;
     }
     if(!flag)
-        printf("该患者暂无处方记录！\n");
+        printf("No prescriptions found for this patient!\n");
 }
 
 void prescription_free_all(void)
 {
-    Prescription* p = presHead;
+    Prescription* p = g_presHead;
     while(p)
     {
         Prescription* t1 = p;
@@ -278,7 +244,7 @@ void prescription_free_all(void)
         }
         free(t1);
     }
-    presHead = NULL;
+    g_presHead = NULL;
 }
 
 /* ====================== pharmacy(1).c ====================== */
@@ -288,19 +254,21 @@ void clearInputBuffer(void) {
     while ((ch = getchar()) != '\n' && ch != EOF);
 }
 
-Medicine* medicine_in(Medicine** head, char* name, int price, int stock, int warningLine) {
+Medicine* medicine_in(Medicine** head, char* name, char* brandName, char* genericName, char* alias, int price, int stock, int warningLine) {
     Medicine* medicine_new = (Medicine*)malloc(sizeof(Medicine));
     if (medicine_new == NULL) {
-        printf("内存分配失败！\n");
+        printf("Memory allocation failed!\n");
         return NULL;
     }
-    medicine_new->name = (char*)malloc(strlen(name) + 1);
-    if (medicine_new->name == NULL) {
-        printf("药品名称内存分配失败！\n");
-        free(medicine_new);
-        return NULL;
-    }
-    strcpy(medicine_new->name, name);
+    medicine_new->medicineId = g_nextMedicineId++;
+    strncpy(medicine_new->name, name ? name : "", MED_NAME_LEN - 1);
+    medicine_new->name[MED_NAME_LEN - 1] = '\0';
+    strncpy(medicine_new->brandName, brandName ? brandName : "", MED_NAME_LEN - 1);
+    medicine_new->brandName[MED_NAME_LEN - 1] = '\0';
+    strncpy(medicine_new->genericName, genericName ? genericName : "", MED_NAME_LEN - 1);
+    medicine_new->genericName[MED_NAME_LEN - 1] = '\0';
+    strncpy(medicine_new->alias, alias ? alias : "", MED_NAME_LEN - 1);
+    medicine_new->alias[MED_NAME_LEN - 1] = '\0';
     medicine_new->price = price;
     medicine_new->stock = stock;
     medicine_new->warningLine = warningLine;
@@ -326,13 +294,13 @@ Medicine* medicine_select(Medicine* head, char* name) {
         }
         last = last->next;
     }
-    printf("未找到药品！\n");
+    printf("Medicine not found!\n");
     return NULL;
 }
 
 void medicine_delete(Medicine** head, char* name) {
     if (*head == NULL) {
-        printf("药品列表为空，删除失败！\n");
+        printf("Medicine list empty, delete failed!\n");
         return;
     }
     Medicine* last = *head;
@@ -346,105 +314,114 @@ void medicine_delete(Medicine** head, char* name) {
                 pre->next = last->next;
             }
             free(last);
-            printf("成功删除药品：%s\n", name);
+            printf("Medicine deleted: %s\n", name);
             return;
         }
         pre = last;
         last = last->next;
     }
-    printf("未找到药品：%s\n", name);
+    printf("Medicine not found: %s\n", name);
 }
 
-/* ====================== 修复：参数改为二级指针 ====================== */
+/* ====================== Fix: parameter changed to double pointer ====================== */
 void medicine_stock(Medicine* head) {
     int num;
     char name[50];
     int add;
     int out;
-    printf("---------------- 库存操作 ----------------\n1.入库\n2.出库\n0.返回上一级菜单\n请输入选项：");
+    printf("--- Stock Operations ---\n1. Stock In\n2. Stock Out\n0. Back\nSelect: ");
     scanf("%d", &num);
     clearInputBuffer();
 
     if (num == 1) {
-        printf("请输入药品名称：");
+        printf("Enter MedicineName: ");
         scanf("%s", name);
         Medicine* p = medicine_select(head, name);
         if (p == NULL) {
-            printf("未找到药品！\n");
+            printf("Medicine not found!\n");
             return;
         }
-        printf("请输入入库数量：");
+        printf("Enter stock-in quantity: ");
         a:
         while (scanf("%d", &add) != 1) {
             clearInputBuffer();
-            printf("输入无效，请重新输入：");
+            printf("Invalid input, re-enter: ");
         }
         if (add <= 0) {
-            printf("入库量不得小于0！请重新输入:");
+            printf("Quantity cannot be negative! Re-enter: ");
             goto a;
         }
         p->stock += add;
-        printf("入库成功！\n");
+        printf("Stock added successfully!\n");
     } else if (num == 2) {
-        printf("请输入药品名称：");
+        printf("Enter MedicineName: ");
         scanf("%s", name);
         Medicine* p = medicine_select(head, name);
         if (p == NULL) {
-            printf("未找到药品！\n");
+            printf("Medicine not found!\n");
             return;
         }
-        printf("请输入出库数量：");
+        printf("Enter stock-out quantity: ");
         b:
         while (scanf("%d", &out) != 1) {
             clearInputBuffer();
-            printf("输入无效，请重新输入：");
+            printf("Invalid input, re-enter: ");
         }
         if (p->stock < out) {
-            printf("库存不可小于0！请重新输入：");
+            printf("Stock cannot be negative! Re-enter: ");
             goto b;
         }
         p->stock -= out;
-        printf("出库成功！\n");
+        printf("Stock updated successfully!\n");
     } else if (num == 0) {
-        /* 修复：不再递归，直接返回 */
+        /* Fixed: no recursion, return directly */
         return;
     } else {
-        printf("未查询到有效操作！\n");
+        printf("Invalid operation!\n");
     }
 }
 
-/* ====================== 修复：二级指针 ====================== */
+/* ====================== Fix: double pointer ====================== */
 void medicine_menu(Medicine** head) {
     int num;
     char name1[50] = {0};
+    char brandName[50] = {0};
+    char genericName[50] = {0};
+    char alias[50] = {0};
     char name2[50] = {0};
     int price;
     int stock;
     int warningLine;
 
-    printf("---------------- 药品操作 ----------------\n1.添加药品\n2.删除药品\n3.库存操作\n0.返回\n请输入选项：");
+    printf("--- Medicine Operations ---\n1. Add Medicine\n2. Delete Medicine\n3. Stock Operations\n0. Back\nSelect: ");
     scanf("%d", &num);
     clearInputBuffer();
 
     if (num == 1) {
-        printf("药品名称：");
+        printf("MedicineName: ");
         scanf("%s", name1);
-        printf("药品价格：");
+        printf("BrandName: ");
+        scanf("%s", brandName);
+        printf("Generic Name: ");
+        scanf("%s", genericName);
+        printf("Alias: ");
+        scanf("%s", alias);
+        printf("MedicinePrice: ");
         scanf("%d", &price);
-        printf("药品库存：");
+        printf("MedicineStock: ");
         scanf("%d", &stock);
-        printf("库存预警线：");
+        printf("Warning Line: ");
         scanf("%d", &warningLine);
-        medicine_in(head, name1, price, stock, warningLine);
-        printf("添加成功！\n");
+        medicine_in(head, name1, brandName, genericName, alias, price, stock, warningLine);
+        printf("Added successfully!\n");
     } else if (num == 2) {
-        printf("请输入药品名称：");
+        printf("Enter MedicineName: ");
         scanf("%s", name2);
         medicine_delete(head, name2);
     } else if (num == 3) {
         medicine_stock(*head);
     } else if (num != 0) {
-        printf("无效选项\n");
+        printf("Invalid option\n");
     }
 }
 
@@ -452,45 +429,46 @@ void medicine_print(Medicine* head) {
     Medicine* last = head;
     int i = 1;
     while (last != NULL) {
-        printf("===== 药品 %d =====\n名称：%s\n价格：%d\n库存：%d\n预警线：%d\n",
-               i, last->name, last->price, last->stock, last->warningLine);
+        printf("===== Medicine %d =====\nName: %s\nBrand: %s\nGeneric: %s\nAlias: %s\nPrice: %.2f\nStock: %d\nWarning: %d\n",
+               i, last->name, last->brandName, last->genericName, last->alias, last->price, last->stock, last->warningLine);
         i++;
         last = last->next;
     }
 }
 
-/* ====================== 文件联动 ====================== */
+/* ====================== File I/O ====================== */
 void saveToFile(Medicine *head) {
     FILE *fp = fopen("medicine.txt", "w");
     if (fp == NULL) {
-        printf("文件打开失败，无法保存\n");
+        printf("Cannot open file for saving\n");
         return;
     }
     Medicine *p = head;
     while (p != NULL) {
-        fprintf(fp, "%s %d %d %d\n", p->name, p->price, p->stock, p->warningLine);
+        fprintf(fp, "%s %s %s %s %.2f %d %d\n", p->name, p->brandName, p->genericName, p->alias, p->price, p->stock, p->warningLine);
         p = p->next;
     }
     fclose(fp);
-    printf("已保存所有药品到文件 medicine.txt\n");
+    printf("All medicines saved to medicine.txt\n");
 }
 
 void loadFromFile(Medicine **head) {
     FILE *fp = fopen("medicine.txt", "r");
     if (fp == NULL) {
-        printf("暂无历史数据，新建空链表\n");
+        printf("No historical data, creating empty list\n");
         return;
     }
-    char name[100];
-    int price, stock, warningLine;
-    while (fscanf(fp, "%s %d %d %d", name, &price, &stock, &warningLine) != EOF) {
-        medicine_in(head, name, price, stock, warningLine);
+    char name[100], brandName[100], genericName[100], alias[100];
+    float price;
+    int stock, warningLine;
+    while (fscanf(fp, "%s %s %s %s %f %d %d", name, brandName, genericName, alias, &price, &stock, &warningLine) != EOF) {
+        medicine_in(head, name, brandName, genericName, alias, price, stock, warningLine);
     }
     fclose(fp);
-    printf("已从文件加载药品数据\n");
+    printf("Medicine data loaded from file\n");
 }
 
-/* ====================== 原 pharmacy(1).c 主函数（条件保留） ====================== */
+/* ====================== pharmacy entry function ====================== */
 #ifdef C_MODULE_STANDALONE
 int main() {
     Medicine *head = NULL;
@@ -499,8 +477,8 @@ int main() {
 
     int op;
     while (1) {
-        printf("\n===== 主菜单 =====\n");
-        printf("1.药品操作\n2.打印药品\n3.保存并退出\n请选择：");
+        printf("\n===== Main Menu =====\n");
+        printf("1. Medicine Operations\n2. Print Medicines\n3. Save & Exit\nSelect: ");
         scanf("%d", &op);
         clearInputBuffer();
 
@@ -512,7 +490,7 @@ int main() {
             saveToFile(head);
             break;
         } else {
-            printf("无效选项\n");
+            printf("Invalid option\n");
         }
     }
 
@@ -522,7 +500,7 @@ int main() {
 
 
 static void c_prepare_demo_registration(void) {
-    if (c_regHead != NULL) return;
+    if (g_regHead != NULL) return;
     Registration* r = (Registration*)malloc(sizeof(Registration));
     if (!r) return;
     r->registerId = 7001;
@@ -530,22 +508,21 @@ static void c_prepare_demo_registration(void) {
     r->doctorId = 2001;
     r->status = 2;
     r->next = NULL;
-    c_regHead = r;
+    g_regHead = r;
 }
 
 int C_entry(void) {
-    Medicine *head = NULL;
+    Medicine *head = g_medicineHead;
     int op;
-    c_prepare_demo_registration();
 
     while (1) {
-        printf("\n===== C 模块菜单 =====\n");
-        printf("1. 药品操作\n");
-        printf("2. 打印药品\n");
-        printf("3. 创建示例处方(患者1001)\n");
-        printf("4. 给处方添加药品\n");
-        printf("5. 显示全部处方\n");
-        printf("0. 返回上一级\n请选择：");
+        printf("\n===== Module C — Pharmacy Menu =====\n");
+        printf("1. Medicine Operations\n");
+        printf("2. Print Medicines\n");
+        printf("3. Create Prescription (Patient 1001)\n");
+        printf("4. Add Medicine to Prescription\n");
+        printf("5. Display All Prescriptions\n");
+        printf("0. Back\nSelect: ");
         if (scanf("%d", &op) != 1) {
             clearInputBuffer();
             continue;
@@ -561,13 +538,13 @@ int C_entry(void) {
         } else if (op == 4) {
             int presId, num;
             char medName[100];
-            printf("请输入处方编号：");
+            printf("Enter Prescription ID: ");
             scanf("%d", &presId);
             clearInputBuffer();
-            printf("请输入药品名称：");
+            printf("Enter MedicineName: ");
             scanf("%99s", medName);
             clearInputBuffer();
-            printf("请输入药品数量：");
+            printf("Enter Quantity: ");
             scanf("%d", &num);
             clearInputBuffer();
             prescription_add_item_by_name(head, presId, medName, num);
@@ -575,21 +552,9 @@ int C_entry(void) {
             prescription_display_all();
         } else if (op == 0) {
             saveToFile(head);
-            prescription_free_all();
-            while (head) {
-                Medicine *tmp = head;
-                head = head->next;
-                free(tmp->name);
-                free(tmp);
-            }
-            while (c_regHead) {
-                Registration *tmp = c_regHead;
-                c_regHead = c_regHead->next;
-                free(tmp);
-            }
             return 0;
         } else {
-            printf("无效选项\n");
+            printf("Invalid option\n");
         }
     }
 }

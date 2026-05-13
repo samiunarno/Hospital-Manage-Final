@@ -38,9 +38,9 @@ static Doctor *doctor_find_by_id(Doctor *head, int doctorId) {
 }
 
 static void doctor_display_all(Doctor *head) {
-    ui_print_sub_title("医生列表");
+    ui_print_sub_title("Doctor List");
     while (head) {
-        printf("%d | %s | %s | %s | 已接诊:%d\n",
+        printf("%d | %s | %s | %s | Seen:%d\n",
                head->doctorId, head->name, head->department, head->title, head->patientCount);
         head = head->next;
     }
@@ -54,12 +54,14 @@ static void doctor_free_all(Doctor *head) {
     }
 }
 
-static Medicine *medicine_create(int medicineId, const char *name, float price, int stock, int warningLine) {
+static Medicine *medicine_create(int medicineId, const char *name, const char *brandName, const char *genericName, const char *alias, float price, int stock, int warningLine) {
     Medicine *m = (Medicine *)malloc(sizeof(Medicine));
     if (!m) return NULL;
     m->medicineId = medicineId;
-    strncpy(m->name, name, MED_NAME_LEN - 1);
-    m->name[MED_NAME_LEN - 1] = '\0';
+    strncpy(m->name, name, MED_NAME_LEN - 1); m->name[MED_NAME_LEN - 1] = '\0';
+    strncpy(m->brandName, brandName ? brandName : "", MED_NAME_LEN - 1); m->brandName[MED_NAME_LEN - 1] = '\0';
+    strncpy(m->genericName, genericName ? genericName : "", MED_NAME_LEN - 1); m->genericName[MED_NAME_LEN - 1] = '\0';
+    strncpy(m->alias, alias ? alias : "", MED_NAME_LEN - 1); m->alias[MED_NAME_LEN - 1] = '\0';
     m->price = price;
     m->stock = stock;
     m->warningLine = warningLine;
@@ -174,7 +176,7 @@ void patient_find_by_name(Patient *head, const char *name) {
         }
         head = head->next;
     }
-    if (!found) printf("未找到对应信息！\n");
+    if (!found) printf("No matching record found!\n");
 }
 
 int patient_update(Patient *head, int patientId) {
@@ -183,10 +185,10 @@ int patient_update(Patient *head, int patientId) {
 
     char name[NAME_LEN], gender[GENDER_LEN], dept[DEPT_LEN];
     int age;
-    utils_input_string("请输入姓名：", name, sizeof(name));
-    age = utils_input_int("请输入年龄：", 0, 150);
-    utils_input_string("请输入性别：", gender, sizeof(gender));
-    utils_input_string("请输入科室：", dept, sizeof(dept));
+    utils_input_string("Name: ", name, sizeof(name));
+    age = utils_input_int("Age: ", 0, 150);
+    utils_input_string("Gender: ", gender, sizeof(gender));
+    utils_input_string("Department: ", dept, sizeof(dept));
 
     strncpy(p->name, name, NAME_LEN - 1);
     strncpy(p->gender, gender, GENDER_LEN - 1);
@@ -226,39 +228,40 @@ int patient_delete(Patient **head, int patientId) {
 
 void patient_display_one(const Patient *patient) {
     if (!patient) return;
-    printf("患者编号：%d\n", patient->patientId);
-    printf("姓名：%s\n", patient->name);
-    printf("年龄：%d\n", patient->age);
-    printf("性别：%s\n", patient->gender);
-    printf("科室：%s\n", patient->department);
-    printf("医生编号：%d\n", patient->doctorId);
-    printf("是否住院：%s\n", patient->isHospitalized ? "是" : "否");
-    printf("床位编号：%d\n", patient->bedId);
-    printf("总费用：%.2f\n", patient->totalCost);
+    printf("Patient ID: %d\n", patient->patientId);
+    printf("Name: %s\n", patient->name);
+    printf("Age: %d\n", patient->age);
+    printf("Gender: %s\n", patient->gender);
+    printf("Department: %s\n", patient->department);
+    printf("Doctor ID: %d\n", patient->doctorId);
+    printf("Hospitalized: %s\n", patient->isHospitalized ? "Yes" : "No");
+    printf("Bed ID: %d\n", patient->bedId);
+    printf("Total Cost: %.2f\n", patient->totalCost);
 }
 
 void patient_display_all(Patient *head) {
-    ui_print_sub_title("患者列表");
+    ui_print_sub_title("Patient List");
     if (!head) {
-        printf("暂无患者信息。\n");
+        printf("No patients found.\n");
         return;
     }
     printf("%-8s %-10s %-6s %-6s %-8s %-8s %-8s %-8s\n",
-           "编号", "姓名", "年龄", "性别", "科室", "医生", "住院", "费用");
+           "ID", "Name", "Age", "Gender", "Dept", "Doctor", "Hosp.", "Cost");
     ui_print_line();
     while (head) {
         printf("%-8d %-10s %-6d %-6s %-8s %-8d %-8s %-8.2f\n",
                head->patientId, head->name, head->age, head->gender,
                head->department, head->doctorId,
-               head->isHospitalized ? "是" : "否", head->totalCost);
+               head->isHospitalized ? "Yes" : "No", head->totalCost);
         head = head->next;
     }
 }
 
-VisitRecord *record_create(int recordId, const char *diagnosis, float cost) {
+VisitRecord *record_create(int recordId, int recordType, const char *diagnosis, float cost) {
     VisitRecord *r = (VisitRecord *)malloc(sizeof(VisitRecord));
     if (!r) return NULL;
     r->recordId = recordId;
+    r->recordType = recordType;
     strncpy(r->diagnosis, diagnosis, DIAGNOSIS_LEN - 1);
     r->diagnosis[DIAGNOSIS_LEN - 1] = '\0';
     r->cost = cost;
@@ -280,14 +283,19 @@ int patient_add_record(Patient *patient, VisitRecord *record) {
 
 void patient_show_records(const Patient *patient) {
     if (!patient) return;
-    ui_print_sub_title("就诊记录");
+    ui_print_sub_title("Visit Records");
     if (!patient->records) {
-        printf("暂无就诊记录。\n");
+        printf("No visit records.\n");
         return;
     }
     VisitRecord *cur = patient->records;
     while (cur) {
-        printf("记录编号：%d | 诊断：%s | 本次费用：%.2f\n", cur->recordId, cur->diagnosis, cur->cost);
+        const char* typeStr = "Unknown";
+        if (cur->recordType == 1) typeStr = "Registration";
+        else if (cur->recordType == 2) typeStr = "Consultation";
+        else if (cur->recordType == 3) typeStr = "Examination";
+        else if (cur->recordType == 4) typeStr = "Hosp.";
+        printf("Record ID: %d | Type: %s | Diagnosis: %s | Cost: %.2f\n", cur->recordId, typeStr, cur->diagnosis, cur->cost);
         cur = cur->next;
     }
 }
@@ -295,31 +303,31 @@ void patient_show_records(const Patient *patient) {
 void patient_register(Patient **head, int *nextPatientId) {
     char name[NAME_LEN], gender[GENDER_LEN], dept[DEPT_LEN];
     int age;
-    utils_input_string("请输入姓名：", name, sizeof(name));
-    age = utils_input_int("请输入年龄：", 0, 150);
-    utils_input_string("请输入性别：", gender, sizeof(gender));
-    utils_input_string("请输入科室：", dept, sizeof(dept));
+    utils_input_string("Name: ", name, sizeof(name));
+    age = utils_input_int("Age: ", 0, 150);
+    utils_input_string("Gender: ", gender, sizeof(gender));
+    utils_input_string("Department: ", dept, sizeof(dept));
 
     Patient *p = patient_create((*nextPatientId)++, name, age, gender, dept);
     if (!p || !patient_add(head, p)) {
-        printf("操作失败！\n");
+        printf("Operation failed!\n");
         free(p);
         return;
     }
-    printf("新增患者成功！患者编号为：%d\n", p->patientId);
+    printf("Patient added! Patient ID: %d\n", p->patientId);
 }
 
 static const char *registration_type_text(int registerType) {
-    return registerType == REGISTER_BOOK ? "预约挂号" : "现场挂号";
+    return registerType == REGISTER_BOOK ? "Appointment" : "Walk-in";
 }
 
 static const char *registration_status_text(int status) {
     switch (status) {
-        case STATUS_WAIT: return "候诊中";
-        case STATUS_CALL: return "已叫号";
-        case STATUS_TREATING: return "就诊中";
-        case STATUS_FINISH: return "已完成";
-        default: return "未知状态";
+        case STATUS_WAIT: return "Waiting";
+        case STATUS_CALL: return "Called";
+        case STATUS_TREATING: return "In Consultation";
+        case STATUS_FINISH: return "Completed";
+        default: return "UnknownStatus";
     }
 }
 
@@ -361,23 +369,23 @@ Registration *registration_find_by_id(Registration *head, int registerId) {
 
 void registration_display_one(const Registration *registration) {
     if (!registration) return;
-    printf("挂号编号：%d\n", registration->registerId);
-    printf("患者编号：%d\n", registration->patientId);
-    printf("医生编号：%d\n", registration->doctorId);
-    printf("科室：%s\n", registration->department);
-    printf("挂号方式：%s\n", registration_type_text(registration->registerType));
-    printf("挂号顺序号：%d\n", registration->registerTime);
-    printf("当前状态：%s\n", registration_status_text(registration->status));
+    printf("RegistrationID：%d\n", registration->registerId);
+    printf("Patient ID: %d\n", registration->patientId);
+    printf("Doctor ID: %d\n", registration->doctorId);
+    printf("Department: %s\n", registration->department);
+    printf("Type: %s\n", registration_type_text(registration->registerType));
+    printf("RegistrationQueue#：%d\n", registration->registerTime);
+    printf("Status: %s\n", registration_status_text(registration->status));
 }
 
 void registration_display_all(Registration *head) {
-    ui_print_sub_title("挂号记录列表");
+    ui_print_sub_title("Registration Records");
     if (!head) {
-        printf("暂无挂号记录。\n");
+        printf("No registration records.\n");
         return;
     }
     printf("%-8s %-8s %-8s %-8s %-10s %-10s %-10s\n",
-           "挂号号", "患者", "医生", "科室", "挂号方式", "顺序号", "状态");
+           "Reg.ID", "Patient", "Doctor", "Dept", "Type", "Queue#", "Status");
     ui_print_line();
     while (head) {
         printf("%-8d %-8d %-8d %-8s %-10s %-10d %-10s\n",
@@ -398,39 +406,39 @@ void registration_display_by_patient(Registration *head, int patientId) {
         }
         head = head->next;
     }
-    if (!found) printf("该患者暂无挂号记录。\n");
+    if (!found) printf("No registration records for this patient.\n");
 }
 
 static int patient_register_common(Patient *pHead, Doctor *dHead, Registration **regHead,
                                    int *nextRegisterId, int *nextRegisterTime, int registerType) {
     if (!pHead) {
-        printf("当前无患者信息，请先新增患者。\n");
+        printf("No patients found. Please add a patient first.\n");
         return 0;
     }
     if (!dHead) {
-        printf("当前无医生信息，无法挂号。\n");
+        printf("No doctors available. Cannot register.\n");
         return 0;
     }
 
     patient_display_all(pHead);
-    int patientId = utils_input_int("请输入患者编号：", 1, 999999);
+    int patientId = utils_input_int("Enter Patient ID: ", 1, 999999);
     Patient *patient = patient_find_by_id(pHead, patientId);
     if (!patient) {
-        printf("未找到对应患者信息！\n");
+        printf("Patient not found!\n");
         return 0;
     }
 
-    printf("可选医生如下：\n");
+    printf("Available doctors:\n");
     doctor_display_all(dHead);
-    int doctorId = utils_input_int("请输入医生编号：", 1, 999999);
+    int doctorId = utils_input_int("Enter Doctor ID: ", 1, 999999);
     Doctor *doctor = doctor_find_by_id(dHead, doctorId);
     if (!doctor) {
-        printf("未找到对应医生信息！\n");
+        printf("Doctor not found!\n");
         return 0;
     }
 
     if (strcmp(patient->department, doctor->department) != 0) {
-        printf("挂号失败：患者所属科室与医生所属科室不一致。\n");
+        printf("Registration failed: Patient and doctor departments do not match.\n");
         return 0;
     }
 
@@ -438,13 +446,13 @@ static int patient_register_common(Patient *pHead, Doctor *dHead, Registration *
                                             doctor->doctorId, patient->department,
                                             registerType, (*nextRegisterTime)++);
     if (!reg || !registration_add(regHead, reg)) {
-        printf("挂号失败！\n");
+        printf("Registration failed!\n");
         free(reg);
         return 0;
     }
 
     patient->doctorId = doctor->doctorId;
-    printf("%s成功！挂号编号：%d，当前状态：%s\n",
+    printf("%s successful! Registration ID: %d, Status: %s\n",
            registration_type_text(registerType), reg->registerId,
            registration_status_text(reg->status));
     return 1;
@@ -472,22 +480,22 @@ void registration_free_all(Registration *head) {
 static void registration_query_menu(Registration *regHead) {
     int choice;
     while (1) {
-        ui_print_sub_title("挂号记录查询");
-        printf("1. 按挂号编号查询\n");
-        printf("2. 按患者编号查询\n");
-        printf("3. 显示全部挂号记录\n");
-        printf("0. 返回上一级\n");
+        ui_print_sub_title("Registration Record Search");
+        printf("1. Search by Registration ID\n");
+        printf("2. Search by Patient ID\n");
+        printf("3. Show all registrations\n");
+        printf("0. Back\n");
         ui_print_line();
-        choice = utils_input_int("请输入选项：", 0, 3);
+        choice = utils_input_int("Select: ", 0, 3);
         if (choice == 0) break;
 
         if (choice == 1) {
-            int registerId = utils_input_int("请输入挂号编号：", 1, 999999);
+            int registerId = utils_input_int("Enter RegistrationID：", 1, 999999);
             Registration *reg = registration_find_by_id(regHead, registerId);
-            if (!reg) printf("未找到对应挂号记录！\n");
+            if (!reg) printf("Registration record not found!\n");
             else registration_display_one(reg);
         } else if (choice == 2) {
-            int patientId = utils_input_int("请输入患者编号：", 1, 999999);
+            int patientId = utils_input_int("Enter Patient ID: ", 1, 999999);
             registration_display_by_patient(regHead, patientId);
         } else if (choice == 3) {
             registration_display_all(regHead);
@@ -543,20 +551,20 @@ void patient_menu(Patient **pHead, Doctor *dHead, Registration **regHead,
                   int *nextRegisterTime, int *nextRecordId) {
     int choice;
     while (1) {
-        ui_print_sub_title("患者与挂号管理");
-        printf("1. 新增患者\n");
-        printf("2. 预约挂号\n");
-        printf("3. 现场挂号\n");
-        printf("4. 查询患者信息\n");
-        printf("5. 修改患者信息\n");
-        printf("6. 删除患者信息\n");
-        printf("7. 添加就诊记录\n");
-        printf("8. 显示所有患者\n");
-        printf("9. 查询挂号记录\n");
-        printf("10. 按年龄排序\n");
-        printf("0. 返回主菜单\n");
+        ui_print_sub_title("Patient & Registration Management");
+        printf("1. Add New Patient\n");
+        printf("2. Book Appointment\n");
+        printf("3. Walk-in Registration\n");
+        printf("4. Search Patient\n");
+        printf("5. Update Patient Info\n");
+        printf("6. Delete Patient\n");
+        printf("7. Add Visit Record\n");
+        printf("8. Display All Patients\n");
+        printf("9. View Registration Records\n");
+        printf("10. Sort by Age\n");
+        printf("0. Back to Main Menu\n");
         ui_print_line();
-        choice = utils_input_int("请输入选项：", 0, 10);
+        choice = utils_input_int("Select: ", 0, 10);
         if (choice == 0) break;
 
         int id;
@@ -575,13 +583,13 @@ void patient_menu(Patient **pHead, Doctor *dHead, Registration **regHead,
                 patient_register_onsite(*pHead, dHead, regHead, nextRegisterId, nextRegisterTime);
                 break;
             case 4:
-                id = utils_input_int("按编号查询请输入患者编号（若按姓名查询请输入 0）：", 0, 999999);
+                id = utils_input_int("Enter Patient ID (0 to search by name): ", 0, 999999);
                 if (id == 0) {
-                    utils_input_string("请输入姓名：", name, sizeof(name));
+                    utils_input_string("Name: ", name, sizeof(name));
                     patient_find_by_name(*pHead, name);
                 } else {
                     p = patient_find_by_id(*pHead, id);
-                    if (!p) printf("未找到对应信息！\n");
+                    if (!p) printf("No matching record found!\n");
                     else {
                         patient_display_one(p);
                         patient_show_records(p);
@@ -589,27 +597,28 @@ void patient_menu(Patient **pHead, Doctor *dHead, Registration **regHead,
                 }
                 break;
             case 5:
-                id = utils_input_int("请输入患者编号：", 1, 999999);
-                printf(patient_update(*pHead, id) ? "修改成功！\n" : "未找到对应信息！\n");
+                id = utils_input_int("Enter Patient ID: ", 1, 999999);
+                printf(patient_update(*pHead, id) ? "Updated successfully!\n" : "No matching record found!\n");
                 break;
             case 6:
-                id = utils_input_int("请输入患者编号：", 1, 999999);
-                printf(patient_delete(pHead, id) ? "删除成功！\n" : "未找到对应信息！\n");
+                id = utils_input_int("Enter Patient ID: ", 1, 999999);
+                printf(patient_delete(pHead, id) ? "Deleted successfully!\n" : "No matching record found!\n");
                 break;
             case 7:
-                id = utils_input_int("请输入患者编号：", 1, 999999);
+                id = utils_input_int("Enter Patient ID: ", 1, 999999);
                 p = patient_find_by_id(*pHead, id);
                 if (!p) {
-                    printf("未找到对应信息！\n");
+                    printf("No matching record found!\n");
                     break;
                 }
-                utils_input_string("请输入诊断信息：", diagnosis, sizeof(diagnosis));
-                cost = utils_input_float("请输入本次费用：", 0.0f, 1000000.0f);
-                if (patient_add_record(p, record_create((*nextRecordId)++, diagnosis, cost))) {
+                int rType = utils_input_int("Enter Record Type (1:Registration, 2:Consultation, 3:Examination, 4:Hosp.)：", 1, 4);
+                utils_input_string("Enter Diagnosis: ", diagnosis, sizeof(diagnosis));
+                cost = utils_input_float("Enter Cost: ", 0.0f, 1000000.0f);
+                if (patient_add_record(p, record_create((*nextRecordId)++, rType, diagnosis, cost))) {
                     p->totalCost += cost;
-                    printf("添加成功！\n");
+                    printf("Added successfully!\n");
                 } else {
-                    printf("操作失败！\n");
+                    printf("Operation failed!\n");
                 }
                 break;
             case 8:
@@ -620,7 +629,7 @@ void patient_menu(Patient **pHead, Doctor *dHead, Registration **regHead,
                 break;
             case 10:
                 patient_sort_by_age(pHead);
-                printf("排序成功！\n");
+                printf("Sort successful!\n");
                 patient_display_all(*pHead);
                 break;
         }
@@ -632,112 +641,69 @@ void patient_menu(Patient **pHead, Doctor *dHead, Registration **regHead,
 
 void init_patients(Patient **pHead, int *nextPatientId, int *nextRecordId) {
     Patient *p;
-    p = patient_create((*nextPatientId)++, "张三", 20, "男", "内科");
-    patient_add_record(p, record_create((*nextRecordId)++, "普通感冒", 35.0f));
-    p->totalCost += 35.0f;
-    patient_add(pHead, p);
-
-    p = patient_create((*nextPatientId)++, "李四", 31, "男", "外科");
-    patient_add(pHead, p);
-
-    p = patient_create((*nextPatientId)++, "王五", 8, "女", "儿科");
-    patient_add(pHead, p);
-
-    p = patient_create((*nextPatientId)++, "赵六", 45, "男", "骨科");
-    patient_add(pHead, p);
-
-    p = patient_create((*nextPatientId)++, "小张", 28, "女", "内科");
-    patient_add(pHead, p);
+    char nameBuf[NAME_LEN];
+    int i;
+    for (i = 1; i <= 100; i++) {
+        sprintf(nameBuf, "Outpatient%d", i);
+        p = patient_create((*nextPatientId)++, nameBuf, 20 + (i % 40), (i % 2 == 0) ? "M" : "F", "Internal Medicine");
+        patient_add(pHead, p);
+    }
+    for (i = 1; i <= 30; i++) {
+        sprintf(nameBuf, "Inpatient%d", i);
+        p = patient_create((*nextPatientId)++, nameBuf, 30 + (i % 40), (i % 2 == 0) ? "F" : "M", "Surgery");
+        p->isHospitalized = 1;
+        p->bedId = 5000 + i;
+        patient_add(pHead, p);
+    }
 }
 
 void init_doctors(Doctor **dHead, int *nextDoctorId) {
-    doctor_add(dHead, doctor_create((*nextDoctorId)++, "陈医生", "内科", "主治医师"));
-    doctor_add(dHead, doctor_create((*nextDoctorId)++, "刘医生", "内科", "副主任医师"));
-    doctor_add(dHead, doctor_create((*nextDoctorId)++, "孙医生", "外科", "主治医师"));
-    doctor_add(dHead, doctor_create((*nextDoctorId)++, "周医生", "外科", "主任医师"));
-    doctor_add(dHead, doctor_create((*nextDoctorId)++, "吴医生", "儿科", "主治医师"));
-    doctor_add(dHead, doctor_create((*nextDoctorId)++, "郑医生", "儿科", "副主任医师"));
-    doctor_add(dHead, doctor_create((*nextDoctorId)++, "王医生", "骨科", "主治医师"));
-    doctor_add(dHead, doctor_create((*nextDoctorId)++, "冯医生", "骨科", "主任医师"));
+    const char* depts[] = {"Internal Medicine", "Surgery", "Pediatrics", "Orthopedics", "Emergency"};
+    char nameBuf[NAME_LEN];
+    for (int i = 1; i <= 20; i++) {
+        sprintf(nameBuf, "Doctor%d", i);
+        doctor_add(dHead, doctor_create((*nextDoctorId)++, nameBuf, depts[i % 5], "Attending Physician"));
+    }
 }
 
 void init_medicines(Medicine **mHead, int *nextMedicineId) {
-    medicine_add(mHead, medicine_create((*nextMedicineId)++, "阿莫西林", 19.0f, 60, 10));
-    medicine_add(mHead, medicine_create((*nextMedicineId)++, "布洛芬", 12.5f, 50, 10));
-    medicine_add(mHead, medicine_create((*nextMedicineId)++, "头孢克肟", 28.0f, 40, 8));
-    medicine_add(mHead, medicine_create((*nextMedicineId)++, "维生素C", 8.0f, 100, 20));
-    medicine_add(mHead, medicine_create((*nextMedicineId)++, "止咳糖浆", 16.0f, 25, 5));
-    medicine_add(mHead, medicine_create((*nextMedicineId)++, "云南白药", 22.0f, 30, 6));
-    medicine_add(mHead, medicine_create((*nextMedicineId)++, "创可贴", 5.0f, 80, 15));
-    medicine_add(mHead, medicine_create((*nextMedicineId)++, "葡萄糖", 14.0f, 35, 8));
-    medicine_add(mHead, medicine_create((*nextMedicineId)++, "奥美拉唑", 26.0f, 24, 6));
-    medicine_add(mHead, medicine_create((*nextMedicineId)++, "蒙脱石散", 18.0f, 18, 5));
-    medicine_add(mHead, medicine_create((*nextMedicineId)++, "氯雷他定", 21.0f, 22, 5));
-    medicine_add(mHead, medicine_create((*nextMedicineId)++, "碘伏", 11.0f, 32, 6));
-    medicine_add(mHead, medicine_create((*nextMedicineId)++, "感冒灵", 13.0f, 45, 10));
-    medicine_add(mHead, medicine_create((*nextMedicineId)++, "双黄连", 17.0f, 28, 6));
-    medicine_add(mHead, medicine_create((*nextMedicineId)++, "阿司匹林", 9.5f, 55, 12));
+    char nameBuf[MED_NAME_LEN];
+    char brandBuf[MED_NAME_LEN];
+    char genBuf[MED_NAME_LEN];
+    char aliasBuf[MED_NAME_LEN];
+    for (int i = 1; i <= 25; i++) {
+        sprintf(nameBuf, "Medicine%d", i);
+        sprintf(brandBuf, "Brand%d", i);
+        sprintf(genBuf, "Generic%d", i);
+        sprintf(aliasBuf, "Alias%d", i);
+        medicine_add(mHead, medicine_create((*nextMedicineId)++, nameBuf, brandBuf, genBuf, aliasBuf, 10.0f + i, 100, 10));
+    }
 }
 
 void init_beds(Bed **bHead, int *nextBedId) {
     int i;
-    for (i = 0; i < 10; ++i) bed_add(bHead, bed_create((*nextBedId)++, "普通病房"));
-    for (i = 0; i < 6; ++i) bed_add(bHead, bed_create((*nextBedId)++, "单人病房"));
-    for (i = 0; i < 4; ++i) bed_add(bHead, bed_create((*nextBedId)++, "监护病房"));
+    for (i = 0; i < 20; ++i) bed_add(bHead, bed_create((*nextBedId)++, "General Ward"));
+    for (i = 0; i < 10; ++i) bed_add(bHead, bed_create((*nextBedId)++, "Private Room"));
+    for (i = 0; i < 10; ++i) bed_add(bHead, bed_create((*nextBedId)++, "ICU"));
 }
 
-void init_system(Patient **pHead, Doctor **dHead, Medicine **mHead, Bed **bHead,
-                 int *nextPatientId, int *nextDoctorId, int *nextMedicineId,
-                 int *nextPrescriptionId, int *nextBedId, int *nextRecordId,
-                 int *nextRegisterId, int *nextQueueId, int *nextRegisterTime) {
-    *nextPatientId = PATIENT_ID_START;
-    *nextDoctorId = DOCTOR_ID_START;
-    *nextMedicineId = MEDICINE_ID_START;
-    *nextPrescriptionId = PRESCRIPTION_ID_START;
-    *nextBedId = BED_ID_START;
-    *nextRecordId = RECORD_ID_START;
-    *nextRegisterId = REGISTER_ID_START;
-    *nextQueueId = QUEUE_ID_START;
-    *nextRegisterTime = REGISTER_TIME_START;
-
-    *pHead = NULL;
-    *dHead = NULL;
-    *mHead = NULL;
-    *bHead = NULL;
-
-    init_patients(pHead, nextPatientId, nextRecordId);
-    init_doctors(dHead, nextDoctorId);
-    init_medicines(mHead, nextMedicineId);
-    init_beds(bHead, nextBedId);
+void init_system_globals(void) {
+    if (g_patientHead != NULL) return; // Only init once
+    
+    init_patients(&g_patientHead, &g_nextPatientId, &g_nextRecordId);
+    init_doctors(&g_doctorHead, &g_nextDoctorId);
+    init_medicines(&g_medicineHead, &g_nextMedicineId);
 }
 
 /************************ A：main.c ************************/
 
-
-
 int A_entry(void) {
     setlocale(LC_ALL, "");
-    Patient *pHead = NULL;
-    Doctor *dHead = NULL;
-    Medicine *mHead = NULL;
-    Bed *bHead = NULL;
-    Registration *regHead = NULL;
-    int nextPatientId, nextDoctorId, nextMedicineId, nextPrescriptionId;
-    int nextBedId, nextRecordId, nextRegisterId, nextQueueId, nextRegisterTime;
+    
+    patient_menu(&g_patientHead, g_doctorHead, &g_regHead,
+                 &g_nextPatientId, &g_nextRegisterId,
+                 &g_nextRegisterTime, &g_nextRecordId);
 
-    init_system(&pHead, &dHead, &mHead, &bHead,
-                &nextPatientId, &nextDoctorId, &nextMedicineId,
-                &nextPrescriptionId, &nextBedId, &nextRecordId,
-                &nextRegisterId, &nextQueueId, &nextRegisterTime);
-
-    patient_menu(&pHead, dHead, &regHead,
-                 &nextPatientId, &nextRegisterId,
-                 &nextRegisterTime, &nextRecordId);
-
-    registration_free_all(regHead);
-    bed_free_all(bHead);
-    medicine_free_all(mHead);
-    doctor_free_all(dHead);
-    patient_free_all(pHead);
+    // Data is preserved globally, do not free here!
     return 0;
 }
