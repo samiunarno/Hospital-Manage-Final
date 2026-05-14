@@ -1,0 +1,22 @@
+============================================================
+Hospital Statistics Report
+============================================================
+
+Report Date: Thu May 14 14:16:26 2026
+
+
+Hospital Overview
+------------------------------------------------------------
+Total Departments:       5
+Total Wards:       9
+Total Beds:       70
+Total Patients:       0
+Overall Occupancy:     0.0%
+
+Department Details
+------------------------------------------------------------
+Cardiology: 0.0% occupancy
+Surgery: 0.0% occupancy
+Pediatrics: 0.0% occupancy
+Orthopedics: 0.0% occupancy
+Emergency: 0.0% occupancy

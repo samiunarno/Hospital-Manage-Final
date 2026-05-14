@@ -15,14 +15,15 @@ TARGET = hospital
 SRCS = $(wildcard $(SRC_DIR)/*.c)
 OBJS = $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(SRCS))
 
-# Default: compile only, do NOT auto-run
+# Default target: compile and auto-run
 all: directories $(TARGET)
 	@echo ""
 	@echo "  ╔═══════════════════════════════════╗"
 	@echo "  ║  BUILD SUCCESSFUL                 ║"
-	@echo "  ║  Run: ./hospital                  ║"
+	@echo "  ║  Starting Hospital System...      ║"
 	@echo "  ╚═══════════════════════════════════╝"
 	@echo ""
+	./$(TARGET)
 
 directories:
 	@mkdir -p $(OBJ_DIR)
@@ -34,8 +35,8 @@ $(TARGET): $(OBJS)
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Separate run target
-run: all
+# Explicit run target (optional, does the same as 'make')
+run: directories $(TARGET)
 	./$(TARGET)
 
 # Clean everything

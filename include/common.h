@@ -140,4 +140,7 @@ extern int g_nextRegisterId;
 extern int g_nextQueueId;
 extern int g_nextRegisterTime;
 
+// Language: 0 = English, 1 = Chinese
+extern int g_lang;
+
 #endif
